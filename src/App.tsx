@@ -155,12 +155,7 @@ function AppContent() {
   }
 
   if (view === 'map') {
-    return (
-      <>
-        <MapPage onBack={goHome} />
-        <BottomNav active="map" onNavigate={setNav} onProfileClick={handleProfileClick} />
-      </>
-    );
+    return <MapPage onBack={goHome} />;
   }
 
   if (view === 'artists') {
