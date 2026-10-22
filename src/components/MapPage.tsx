@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, SlidersHorizontal, X, MapPin, Calendar, Map as MapIcon, Check } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, SlidersHorizontal, X, MapPin, Calendar, Map as MapIcon, Check, Bookmark, CheckCircle2 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { mapEvents, allCountries, allTypes, type MapEvent, type EventType } from '@/data/mapEvents';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 interface MapPageProps {
   onBack: () => void;
@@ -32,7 +34,13 @@ function createPinIcon(major: boolean): L.DivIcon {
   });
 }
 
+interface EventStatus {
+  saved: boolean;
+  visited: boolean;
+}
+
 export default function MapPage({ onBack }: MapPageProps) {
+  const { user } = useAuth();
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +51,46 @@ export default function MapPage({ onBack }: MapPageProps) {
   const [pendingCountries, setPendingCountries] = useState<Set<string>>(new Set(allCountries));
   const [pendingTypes, setPendingTypes] = useState<Set<EventType>>(new Set(allTypes.map((t) => t.value)));
   const [selectedEvent, setSelectedEvent] = useState<MapEvent | null>(null);
+  const [statusMap, setStatusMap] = useState<Record<number, EventStatus>>({});
+
+  const loadStatuses = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('event_user_status')
+      .select('event_id, saved, visited')
+      .eq('user_id', user.id);
+    if (data) {
+      const map: Record<number, EventStatus> = {};
+      for (const row of data) {
+        map[row.event_id] = { saved: row.saved, visited: row.visited };
+      }
+      setStatusMap(map);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadStatuses();
+  }, [loadStatuses]);
+
+  const toggleStatus = async (eventId: number, field: 'saved' | 'visited') => {
+    if (!user) return;
+    const current = statusMap[eventId] ?? { saved: false, visited: false };
+    const newValue = !current[field];
+    setStatusMap((prev) => ({
+      ...prev,
+      [eventId]: { ...current, [field]: newValue },
+    }));
+
+    const { error } = await supabase
+      .from('event_user_status')
+      .upsert({ user_id: user.id, event_id: eventId, [field]: newValue });
+    if (error) {
+      setStatusMap((prev) => ({
+        ...prev,
+        [eventId]: { ...current, [field]: !newValue },
+      }));
+    }
+  };
 
   const filteredEvents = mapEvents.filter(
     (e) => selectedCountries.has(e.country) && selectedTypes.has(e.type)
@@ -90,6 +138,12 @@ export default function MapPage({ onBack }: MapPageProps) {
 
     filteredEvents.forEach((event) => {
       const marker = L.marker([event.lat, event.lng], { icon: createPinIcon(event.major) });
+      marker.bindTooltip(event.title, {
+        permanent: false,
+        direction: 'top',
+        offset: [0, -12],
+        className: 'odi-map-tooltip',
+      });
       marker.on('click', () => {
         setSelectedEvent(event);
         map.flyTo([event.lat, event.lng], 14, { duration: 1.5 });
@@ -201,6 +255,17 @@ export default function MapPage({ onBack }: MapPageProps) {
           font-size: 9px !important;
         }
         .leaflet-control-attribution a { color: #555555 !important; }
+        .odi-map-tooltip {
+          background: #0A0A0A !important;
+          color: #FFFFFF !important;
+          border: 1px solid #222222 !important;
+          border-radius: 8px !important;
+          font-family: 'Inter', sans-serif !important;
+          font-size: 12px !important;
+          padding: 6px 12px !important;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+        }
+        .odi-map-tooltip::before { display: none !important; }
       `}</style>
 
       {/* Filter panel */}
@@ -327,9 +392,41 @@ export default function MapPage({ onBack }: MapPageProps) {
               </span>
             </div>
 
-            <button className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#3B82F6] py-4 text-sm font-semibold text-white transition-all hover:bg-[#2563EB] hover:shadow-lg hover:shadow-[#3B82F6]/30">
-              Join Event
-            </button>
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                onClick={() => toggleStatus(selectedEvent.id, 'saved')}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all ${
+                  statusMap[selectedEvent.id]?.saved
+                    ? 'border-[#3B82F6] bg-[#3B82F6]/10 text-[#3B82F6]'
+                    : 'border-[#222222] bg-[#111111] text-[#888888] hover:text-white'
+                }`}
+                aria-label="Save event"
+              >
+                <Bookmark
+                  size={18}
+                  strokeWidth={1.75}
+                  fill={statusMap[selectedEvent.id]?.saved ? 'currentColor' : 'none'}
+                />
+              </button>
+              <button
+                onClick={() => toggleStatus(selectedEvent.id, 'visited')}
+                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-all ${
+                  statusMap[selectedEvent.id]?.visited
+                    ? 'border-[#3B82F6] bg-[#3B82F6]/10 text-[#3B82F6]'
+                    : 'border-[#222222] bg-[#111111] text-[#888888] hover:text-white'
+                }`}
+                aria-label="Mark as visited"
+              >
+                <CheckCircle2
+                  size={18}
+                  strokeWidth={1.75}
+                  fill={statusMap[selectedEvent.id]?.visited ? 'currentColor' : 'none'}
+                />
+              </button>
+              <button className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#3B82F6] py-4 text-sm font-semibold text-white transition-all hover:bg-[#2563EB] hover:shadow-lg hover:shadow-[#3B82F6]/30">
+                Join Event
+              </button>
+            </div>
           </div>
         </div>
       )}
