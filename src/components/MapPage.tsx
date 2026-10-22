@@ -59,14 +59,27 @@ export default function MapPage({ onBack }: MapPageProps) {
       worldCopyJump: true,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
       maxZoom: 19,
       subdomains: 'abcd',
+      crossOrigin: true,
     }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     mapRef.current = map;
+
+    const resizeTimer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    const handleResize = () => map.invalidateSize();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -85,6 +98,8 @@ export default function MapPage({ onBack }: MapPageProps) {
       marker.addTo(map);
       markersRef.current.push(marker);
     });
+
+    map.invalidateSize();
   }, [filteredEvents]);
 
   const togglePendingCountry = (country: string) => {
@@ -123,7 +138,7 @@ export default function MapPage({ onBack }: MapPageProps) {
   return (
     <div className="fixed inset-0 bg-[#0A0A0A]">
       {/* Map container */}
-      <div ref={containerRef} className="absolute inset-0" style={{ background: '#0A0A0A' }} />
+      <div ref={containerRef} className="absolute inset-0 h-full w-full" style={{ background: '#0A0A0A', minHeight: '100%' }} />
 
       {/* Top overlay */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-[1000]">
