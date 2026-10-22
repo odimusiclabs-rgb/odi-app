@@ -32,10 +32,15 @@ body {
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 .snap-carousel {
-  scroll-snap-type: x mandatory;
+  scroll-snap-type: x proximity;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-stop: normal;
 }
-.snap-item { scroll-snap-align: center; }
+.snap-item {
+  scroll-snap-align: center;
+  scroll-snap-stop: normal;
+}
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(24px); }

@@ -78,14 +78,15 @@ export default function Carousel({ onLockedAction }: CarouselProps) {
               aria-label={`${release.title} by ${release.artist}`}
             >
               <div
-                className="relative transition-all duration-500 ease-out"
+                className="relative transition-all duration-[600ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
                 style={{
                   width: isActive ? CARD_SIZE : CARD_SIZE - 28,
                   height: isActive ? CARD_SIZE : CARD_SIZE - 28,
+                  opacity: isActive ? 1 : 0.6,
                 }}
               >
                 <div
-                  className={`absolute inset-0 rounded-full p-[3px] transition-all duration-500 ${
+                  className={`absolute inset-0 rounded-full p-[3px] transition-all duration-[600ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
                     isActive
                       ? 'bg-[#3B82F6] shadow-[0_0_32px_rgba(59,130,246,0.45)]'
                       : 'bg-[#2a2a2a]'
@@ -118,7 +119,10 @@ export default function Carousel({ onLockedAction }: CarouselProps) {
                 </div>
               </div>
 
-              <div className="mt-4 text-center">
+              <div
+                className="mt-4 text-center transition-opacity duration-[600ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+                style={{ opacity: isActive ? 1 : 0.6 }}
+              >
                 <p className="truncate font-anton text-base uppercase leading-tight text-white">
                   {release.title}
                 </p>

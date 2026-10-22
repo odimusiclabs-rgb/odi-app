@@ -86,7 +86,11 @@ function AppContent() {
         <ProfilePage
           onBack={goHome}
           onAdminPanel={goToAdmin}
-          onEditProfile={goToProfile}
+          onNavigate={(v) => setView(v as View)}
+          onSignOut={async () => {
+            await signOut();
+            setView('home');
+          }}
         />
         <BottomNav
           active="home"

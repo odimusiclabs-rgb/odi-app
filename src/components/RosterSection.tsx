@@ -87,11 +87,12 @@ export default function RosterSection() {
                 key={artist.id}
                 data-artist-id={artist.id}
                 onClick={() => handleCardClick(artist.id)}
-                className="snap-item group relative shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-[#3B82F6] transition-all duration-500 ease-out"
+                className="snap-item group relative shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-[#3B82F6] transition-all duration-[600ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
                 style={{
                   width: ROSTER_WIDTH,
                   height: ROSTER_HEIGHT,
                   transform: isActive ? 'scale(1.03)' : 'scale(1)',
+                  opacity: isActive ? 1 : 0.6,
                   boxShadow: isActive
                     ? '0 0 36px rgba(59,130,246,0.35), 0 0 0 1px rgba(59,130,246,0.6)'
                     : '0 0 0 1px rgba(59,130,246,0.18)',
