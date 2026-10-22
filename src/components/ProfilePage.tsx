@@ -174,7 +174,7 @@ export default function ProfilePage({
           </button>
 
           <button
-            onClick={() => onNavigate('profile')}
+            onClick={() => onNavigate('edit-profile')}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/50 backdrop-blur-sm transition-all hover:border-white/20 hover:text-white"
             aria-label="Edit profile"
           >
@@ -202,6 +202,22 @@ export default function ProfilePage({
             </h1>
 
             <p className="mt-1 text-sm font-medium text-[#3B82F6]">@{username}</p>
+
+            {/* Stats row */}
+            <div className="mt-6 flex items-center divide-x divide-[#222222]">
+              <div className="flex flex-col items-center px-5">
+                <span className="font-anton text-xl text-white">0</span>
+                <span className="mt-0.5 text-[10px] uppercase tracking-wider text-[#555555]">Bonuses</span>
+              </div>
+              <div className="flex flex-col items-center px-5">
+                <span className="font-anton text-xl text-white">0</span>
+                <span className="mt-0.5 text-[10px] uppercase tracking-wider text-[#555555]">Following</span>
+              </div>
+              <div className="flex flex-col items-center px-5">
+                <span className="font-anton text-xl text-white">0</span>
+                <span className="mt-0.5 text-[10px] uppercase tracking-wider text-[#555555]">Followers</span>
+              </div>
+            </div>
 
             {isAdmin && (
               <button
