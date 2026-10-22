@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
 import Header from '@/components/Header';
 import Hero from '@/components/Hero';
 import Carousel from '@/components/Carousel';
@@ -17,6 +16,7 @@ import SettingsPage from '@/components/SettingsPage';
 import SupportPage from '@/components/SupportPage';
 import SideMenu from '@/components/SideMenu';
 import RosterSection from '@/components/RosterSection';
+import EditProfilePage from '@/components/EditProfilePage';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 
 type View =
@@ -107,21 +107,7 @@ function AppContent() {
   if (user && view === 'edit-profile') {
     return (
       <>
-        <div className="min-h-screen bg-[#0A0A0A] px-6 py-8 sm:px-10">
-          <div className="mx-auto max-w-md">
-            <button
-              onClick={goToProfile}
-              className="mb-10 flex items-center gap-2 text-sm text-[#888888] transition-colors hover:text-white"
-            >
-              <ArrowLeft size={18} strokeWidth={1.5} />
-              Back to Profile
-            </button>
-            <div className="flex flex-col items-center text-center">
-              <h1 className="font-anton text-2xl uppercase text-white">Edit Profile</h1>
-              <p className="mt-3 text-sm text-[#555555]">Profile editing is coming soon.</p>
-            </div>
-          </div>
-        </div>
+        <EditProfilePage onBack={goToProfile} />
         <BottomNav
           active="home"
           onNavigate={setNav}
