@@ -64,7 +64,7 @@ export default function Carousel({ onLockedAction }: CarouselProps) {
         ref={scrollerRef}
         className="no-scrollbar snap-carousel flex items-center gap-6 overflow-x-auto pb-4"
       >
-        <div className="shrink-0" style={{ width: 'calc(50vw - 130px)' }} />
+        <div className="shrink-0" style={{ width: 'max(20px, calc(50vw - 114px))' }} />
 
         {releases.map((release) => {
           const isActive = release.id === activeId;
@@ -134,7 +134,7 @@ export default function Carousel({ onLockedAction }: CarouselProps) {
           );
         })}
 
-        <div className="shrink-0" style={{ width: 'calc(50vw - 130px)' }} />
+        <div className="shrink-0" style={{ width: 'max(20px, calc(50vw - 114px))' }} />
       </div>
     </section>
   );

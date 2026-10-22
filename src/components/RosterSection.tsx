@@ -75,9 +75,9 @@ export default function RosterSection() {
 
         <div
           ref={scrollerRef}
-          className="no-scrollbar snap-carousel flex items-stretch gap-5 overflow-x-auto overscroll-x-contain pb-4 touch-pan-x"
+          className="no-scrollbar snap-carousel flex items-stretch gap-5 overflow-x-auto overscroll-x-contain px-1 pb-10 pt-4 touch-pan-x"
         >
-          <div className="shrink-0" style={{ width: 'calc(50vw - 150px)' }} />
+          <div className="shrink-0" style={{ width: 'max(20px, calc(50vw - 174px))' }} />
 
           {artists.map((artist) => {
             const displayArtist = artist.id === 1 ? { ...artist, cover: jetImage } : artist;
@@ -126,7 +126,7 @@ export default function RosterSection() {
             );
           })}
 
-          <div className="shrink-0" style={{ width: 'calc(50vw - 150px)' }} />
+          <div className="shrink-0" style={{ width: 'max(20px, calc(50vw - 174px))' }} />
         </div>
       </section>
 
@@ -138,7 +138,7 @@ export default function RosterSection() {
           Partners
         </h2>
 
-        <div className="no-scrollbar flex items-center gap-3 overflow-x-auto overscroll-x-contain pb-2 touch-pan-x">
+        <div className="no-scrollbar flex items-center gap-3 overflow-x-auto overscroll-x-contain pb-2 pr-6 touch-pan-x">
           {partners.map((p) => (
             <div
               key={p.id}

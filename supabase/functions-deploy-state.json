@@ -4,6 +4,10 @@
     "admin-users": {
       "hasChanged": false,
       "hash": "90c18b81089aa09100214275ba14f82c621637ef581ad6f38286eb9ba280c1db"
+    },
+    "create-initial-users": {
+      "hasChanged": false,
+      "hash": "ce24eeabc746c9df4fb22303f2be7410c8179b9b9af659d84c6d9c5c47b9feec"
     }
   }
 }
