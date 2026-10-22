@@ -92,7 +92,13 @@ export default function MapPage({ onBack }: MapPageProps) {
       const marker = L.marker([event.lat, event.lng], { icon: createPinIcon(event.major) });
       marker.on('click', () => {
         setSelectedEvent(event);
-        map.flyTo([event.lat, event.lng], 6, { duration: 0.8 });
+        map.flyTo([event.lat, event.lng], 14, { duration: 1.5 });
+
+        const onMoveEnd = () => {
+          map.panBy([0, 170], { animate: true, duration: 0.5 });
+          map.off('moveend', onMoveEnd);
+        };
+        map.on('moveend', onMoveEnd);
       });
       marker.addTo(map);
       markersRef.current.push(marker);
