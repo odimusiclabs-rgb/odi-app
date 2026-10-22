@@ -59,10 +59,9 @@ export default function MapPage({ onBack }: MapPageProps) {
       worldCopyJump: true,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
-      crossOrigin: true,
+      attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -173,6 +172,9 @@ export default function MapPage({ onBack }: MapPageProps) {
       {/* Leaflet zoom control + pin overrides */}
       <style>{`
         .leaflet-container { background: #0A0A0A !important; }
+        .leaflet-tile-pane {
+          filter: invert(1) hue-rotate(180deg) brightness(0.7) contrast(1.2);
+        }
         .leaflet-control-zoom a {
           background: #1A1A1A !important;
           color: #888888 !important;
@@ -187,6 +189,12 @@ export default function MapPage({ onBack }: MapPageProps) {
         .odi-map-pin { background: transparent !important; border: none !important; }
         .leaflet-marker-icon { transition: transform 0.2s ease; }
         .leaflet-marker-icon:hover { transform: scale(1.3); z-index: 1000 !important; }
+        .leaflet-control-attribution {
+          background: rgba(10,10,10,0.7) !important;
+          color: #444444 !important;
+          font-size: 9px !important;
+        }
+        .leaflet-control-attribution a { color: #555555 !important; }
       `}</style>
 
       {/* Filter panel */}
