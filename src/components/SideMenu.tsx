@@ -19,7 +19,6 @@ export default function SideMenu({
 }: SideMenuProps) {
   return (
     <>
-      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-fade"
@@ -27,7 +26,6 @@ export default function SideMenu({
         />
       )}
 
-      {/* Drawer */}
       <aside
         className={`fixed right-0 top-0 z-50 flex h-full w-[min(80vw,320px)] flex-col border-l border-[#222222] bg-[#111111] transition-transform duration-300 ease-out ${
           open ? 'translate-x-0' : 'translate-x-full'

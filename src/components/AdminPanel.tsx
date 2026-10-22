@@ -309,7 +309,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
         </section>
 
-        {/* Password note */}
         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-[#333333] bg-[#141414] px-5 py-4">
           <ShieldAlert size={18} className="mt-0.5 shrink-0 text-[#888888]" strokeWidth={1.5} />
           <p className="text-xs leading-relaxed text-[#888888]">
@@ -434,7 +433,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
         )}
       </div>
 
-      {/* Reset password result modal */}
       {resetResult && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade"
