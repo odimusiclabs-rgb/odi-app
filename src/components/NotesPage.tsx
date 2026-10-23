@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, StickyNote, Plus, Trash2, Bold, Italic, Underline, List, Calendar, X } from 'lucide-react';
+import { ArrowLeft, StickyNote, Plus, Trash2, Bold, Italic, Underline, List, Calendar, X, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { mapEvents } from '@/data/mapEvents';
 
 interface NotesPageProps {
   onBack: () => void;
+  onViewEvent?: (eventId: number) => void;
 }
 
 interface Note {
@@ -34,13 +35,14 @@ function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
-export default function NotesPage({ onBack }: NotesPageProps) {
+export default function NotesPage({ onBack, onViewEvent }: NotesPageProps) {
   const { user } = useAuth();
   const editorRef = useRef<HTMLDivElement>(null);
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -59,12 +61,25 @@ export default function NotesPage({ onBack }: NotesPageProps) {
     loadNotes();
   }, [loadNotes]);
 
-  const openEditor = () => {
+  const openNewEditor = () => {
+    setEditingNote(null);
     setTitle('');
     setEditorOpen(true);
     setTimeout(() => {
       if (editorRef.current) {
         editorRef.current.innerHTML = '';
+        editorRef.current.focus();
+      }
+    }, 50);
+  };
+
+  const openEditEditor = (note: Note) => {
+    setEditingNote(note);
+    setTitle(note.title);
+    setEditorOpen(true);
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = note.content;
         editorRef.current.focus();
       }
     }, 50);
@@ -81,17 +96,35 @@ export default function NotesPage({ onBack }: NotesPageProps) {
     if (!title.trim() && !stripHtml(content)) return;
 
     setSaving(true);
-    const { data } = await supabase
-      .from('notes')
-      .insert({ user_id: user.id, title: title.trim() || 'Untitled', content })
-      .select('id, title, content, created_at')
-      .maybeSingle();
+    const cleanTitle = title.trim() || 'Untitled';
 
-    if (data) {
-      setNotes((prev) => [data as Note, ...prev]);
+    if (editingNote) {
+      const { data } = await supabase
+        .from('notes')
+        .update({ title: cleanTitle, content, updated_at: new Date().toISOString() })
+        .eq('id', editingNote.id)
+        .select('id, title, content, created_at')
+        .maybeSingle();
+
+      if (data) {
+        setNotes((prev) =>
+          prev.map((n) => (n.id === editingNote.id ? (data as Note) : n))
+        );
+      }
+    } else {
+      const { data } = await supabase
+        .from('notes')
+        .insert({ user_id: user.id, title: cleanTitle, content })
+        .select('id, title, content, created_at')
+        .maybeSingle();
+
+      if (data) {
+        setNotes((prev) => [data as Note, ...prev]);
+      }
     }
     setSaving(false);
     setEditorOpen(false);
+    setEditingNote(null);
   };
 
   const deleteNote = async (id: string) => {
@@ -129,7 +162,7 @@ export default function NotesPage({ onBack }: NotesPageProps) {
             Notes
           </h1>
           <button
-            onClick={openEditor}
+            onClick={openNewEditor}
             className="mb-1 flex items-center gap-2 rounded-full bg-[#3B82F6] px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-[#2563EB] hover:shadow-lg hover:shadow-[#3B82F6]/30"
           >
             <Plus size={16} strokeWidth={2} />
@@ -162,15 +195,26 @@ export default function NotesPage({ onBack }: NotesPageProps) {
                         {event.date} — {event.city}
                       </p>
                     </div>
-                    <span
-                      className={`ml-3 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
-                        urgent
-                          ? 'bg-[#3B82F6]/15 text-[#3B82F6]'
-                          : 'bg-[#222222] text-[#888888]'
-                      }`}
-                    >
-                      {days === 0 ? 'Today' : `${days}d`}
-                    </span>
+                    <div className="ml-3 flex shrink-0 items-center gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                          urgent
+                            ? 'bg-[#3B82F6]/15 text-[#3B82F6]'
+                            : 'bg-[#222222] text-[#888888]'
+                        }`}
+                      >
+                        {days === 0 ? 'Today' : `${days}d`}
+                      </span>
+                      {onViewEvent && (
+                        <button
+                          onClick={() => onViewEvent(event.id)}
+                          className="flex items-center gap-1 rounded-full bg-[#3B82F6] px-3 py-1.5 text-[10px] font-bold uppercase text-white transition-all hover:bg-[#2563EB]"
+                        >
+                          View
+                          <ArrowRight size={10} strokeWidth={2.5} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -191,14 +235,18 @@ export default function NotesPage({ onBack }: NotesPageProps) {
               {notes.map((note) => (
                 <div
                   key={note.id}
-                  className="group rounded-2xl border border-[#1E1E1E] bg-[#141414] p-5 transition-all hover:border-[#333333]"
+                  onClick={() => openEditEditor(note)}
+                  className="group cursor-pointer rounded-2xl border border-[#1E1E1E] bg-[#141414] p-5 transition-all hover:border-[#333333]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="font-anton text-base uppercase leading-tight text-white">
                       {note.title}
                     </h3>
                     <button
-                      onClick={() => deleteNote(note.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNote(note.id);
+                      }}
                       className="shrink-0 text-[#444444] transition-colors hover:text-red-500"
                       aria-label="Delete note"
                     >
@@ -233,7 +281,9 @@ export default function NotesPage({ onBack }: NotesPageProps) {
           />
           <div className="relative w-full max-w-2xl rounded-2xl border border-[#222222] bg-[#1A1A1A] p-6 animate-fade-up">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="font-anton text-xl uppercase text-white">New Note</h2>
+              <h2 className="font-anton text-xl uppercase text-white">
+                {editingNote ? 'Edit Note' : 'New Note'}
+              </h2>
               <button
                 onClick={() => setEditorOpen(false)}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-[#888888] transition-colors hover:text-white"

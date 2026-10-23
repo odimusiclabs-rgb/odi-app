@@ -38,6 +38,7 @@ function AppContent() {
   const [view, setView] = useState<View>('home');
   const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [focusEventId, setFocusEventId] = useState<number | undefined>(undefined);
 
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
@@ -148,14 +149,20 @@ function AppContent() {
   if (view === 'notes') {
     return (
       <>
-        <NotesPage onBack={goHome} />
+        <NotesPage
+          onBack={goHome}
+          onViewEvent={(eventId) => {
+            setFocusEventId(eventId);
+            setView('map');
+          }}
+        />
         <BottomNav active="notes" onNavigate={setNav} onProfileClick={handleProfileClick} />
       </>
     );
   }
 
   if (view === 'map') {
-    return <MapPage onBack={goHome} />;
+    return <MapPage onBack={goHome} focusEventId={focusEventId} />;
   }
 
   if (view === 'artists') {

@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 
 interface MapPageProps {
   onBack: () => void;
+  focusEventId?: number;
 }
 
 const typeLabels: Record<EventType, string> = {
@@ -39,7 +40,7 @@ interface EventStatus {
   visited: boolean;
 }
 
-export default function MapPage({ onBack }: MapPageProps) {
+export default function MapPage({ onBack, focusEventId }: MapPageProps) {
   const { user } = useAuth();
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -160,6 +161,20 @@ export default function MapPage({ onBack }: MapPageProps) {
 
     map.invalidateSize();
   }, [filteredEvents]);
+
+  useEffect(() => {
+    if (!focusEventId || !mapRef.current) return;
+    const event = mapEvents.find((e) => e.id === focusEventId);
+    if (!event) return;
+    const map = mapRef.current;
+    setSelectedEvent(event);
+    map.flyTo([event.lat, event.lng], 14, { duration: 1.5 });
+    const onMoveEnd = () => {
+      map.panBy([0, 170], { animate: true, duration: 0.5 });
+      map.off('moveend', onMoveEnd);
+    };
+    map.on('moveend', onMoveEnd);
+  }, [focusEventId]);
 
   const togglePendingCountry = (country: string) => {
     setPendingCountries((prev) => {
