@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, StickyNote, Plus, Trash2, Bold, Italic, Underline, List, Calendar, X, ArrowRight } from 'lucide-react';
+import { ArrowLeft, StickyNote, Plus, Trash2, Bold, Italic, Underline, List, Calendar, X, ArrowRight, Music, Guitar, FileText, Grid3x3, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { mapEvents } from '@/data/mapEvents';
@@ -35,9 +35,26 @@ function daysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86400000);
 }
 
+type TemplateType = 'sheet-music' | 'guitar-chords' | 'lyrics-chords' | 'blank-grid';
+
+interface Template {
+  id: TemplateType;
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+}
+
+const templates: Template[] = [
+  { id: 'sheet-music', title: 'Blank Sheet Music', subtitle: '5-line staves for notation', icon: <Music size={22} strokeWidth={1.5} /> },
+  { id: 'guitar-chords', title: 'Guitar Chords', subtitle: 'Chord grids & fret diagrams', icon: <Guitar size={22} strokeWidth={1.5} /> },
+  { id: 'lyrics-chords', title: 'Lyrics & Chords', subtitle: 'Text with inline chords', icon: <FileText size={22} strokeWidth={1.5} /> },
+  { id: 'blank-grid', title: 'Blank Grid', subtitle: 'Square grid for sketches', icon: <Grid3x3 size={22} strokeWidth={1.5} /> },
+];
+
 export default function NotesPage({ onBack, onViewEvent }: NotesPageProps) {
   const { user } = useAuth();
   const editorRef = useRef<HTMLDivElement>(null);
+  const templateEditorRef = useRef<HTMLTextAreaElement>(null);
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +62,11 @@ export default function NotesPage({ onBack, onViewEvent }: NotesPageProps) {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState<TemplateType | null>(null);
+  const [templateTitle, setTemplateTitle] = useState('');
+  const [templateText, setTemplateText] = useState('');
+  const [templateSaving, setTemplateSaving] = useState(false);
 
   const loadNotes = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -125,6 +147,65 @@ export default function NotesPage({ onBack, onViewEvent }: NotesPageProps) {
     setSaving(false);
     setEditorOpen(false);
     setEditingNote(null);
+  };
+
+  const openTemplate = (tpl: TemplateType) => {
+    setActiveTemplate(tpl);
+    const tplData = templates.find((t) => t.id === tpl);
+    setTemplateTitle(tplData?.title ?? '');
+    setTemplateText('');
+    setTemplateOpen(true);
+  };
+
+  const saveTemplateAsNote = async () => {
+    if (!user) return;
+    const cleanTitle = templateTitle.trim() || 'Untitled Template';
+    if (!templateText.trim()) return;
+
+    setTemplateSaving(true);
+    const escaped = templateText
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
+    const content = `<div data-template="${activeTemplate}">${escaped}</div>`;
+
+    const { data } = await supabase
+      .from('notes')
+      .insert({ user_id: user.id, title: cleanTitle, content })
+      .select('id, title, content, created_at')
+      .maybeSingle();
+
+    if (data) {
+      setNotes((prev) => [data as Note, ...prev]);
+    }
+    setTemplateSaving(false);
+    setTemplateOpen(false);
+  };
+
+  const printTemplate = () => {
+    if (!activeTemplate) return;
+    const tpl = templates.find((t) => t.id === activeTemplate);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const gridStyle = getTemplatePrintGrid(activeTemplate);
+    printWindow.document.write(`
+      <!DOCTYPE html><html><head><title>${tpl?.title ?? 'Template'}</title>
+      <style>
+        body { margin: 0; padding: 40px; background: white; color: #1a1a1a; font-family: 'Inter', sans-serif; }
+        h1 { font-size: 20px; margin-bottom: 20px; }
+        .paper { position: relative; min-height: 800px; }
+        .grid-bg { position: absolute; inset: 0; pointer-events: none; }
+        .text-layer { position: relative; z-index: 1; white-space: pre-wrap; font-size: 14px; line-height: ${activeTemplate === 'sheet-music' ? '40px' : activeTemplate === 'guitar-chords' ? '60px' : '28px'}; min-height: 800px; }
+        ${gridStyle}
+      </style></head><body>
+      <h1>${templateTitle || tpl?.title || 'Template'}</h1>
+      <div class="paper"><div class="grid-bg"></div><div class="text-layer">${(templateText || '').replace(/</g, '&lt;')}</div></div>
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const deleteNote = async (id: string) => {
@@ -222,6 +303,27 @@ export default function NotesPage({ onBack, onViewEvent }: NotesPageProps) {
           ) : (
             <p className="text-sm text-[#555555]">No upcoming events.</p>
           )}
+        </div>
+
+        {/* Templates */}
+        <div className="mt-8">
+          <h2 className="font-anton text-lg uppercase text-white">Templates</h2>
+          <p className="mt-1 text-sm text-[#888888]">Write music directly in the app or print</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {templates.map((tpl) => (
+              <button
+                key={tpl.id}
+                onClick={() => openTemplate(tpl.id)}
+                className="group flex flex-col items-center rounded-2xl border border-[#1E1E1E] bg-[#141414] p-6 text-center transition-all hover:border-[#3B82F6]/50 hover:bg-[#161616]"
+              >
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-[#222222] bg-[#0F0F0F] text-[#888888] transition-colors group-hover:border-[#3B82F6]/40 group-hover:text-[#3B82F6]">
+                  {tpl.icon}
+                </div>
+                <h3 className="mt-4 font-anton text-sm uppercase text-white">{tpl.title}</h3>
+                <p className="mt-1 text-xs text-[#555555]">{tpl.subtitle}</p>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Notes list */}
@@ -340,6 +442,72 @@ export default function NotesPage({ onBack, onViewEvent }: NotesPageProps) {
         </div>
       )}
 
+      {/* Template editor modal */}
+      {templateOpen && activeTemplate && (
+        <div className="fixed inset-0 z-[2100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setTemplateOpen(false)}
+          />
+          <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[#222222] bg-[#1A1A1A] animate-fade-up">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[#222222] px-6 py-4">
+              <input
+                type="text"
+                value={templateTitle}
+                onChange={(e) => setTemplateTitle(e.target.value)}
+                placeholder="Title"
+                className="font-anton text-lg uppercase text-white placeholder:text-[#444444] focus:outline-none"
+              />
+              <button
+                onClick={() => setTemplateOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[#888888] transition-colors hover:text-white"
+              >
+                <X size={18} strokeWidth={1.5} />
+              </button>
+            </div>
+
+            {/* Paper area */}
+            <div className="flex-1 overflow-auto bg-[#0F0F0F] p-6">
+              <div className="relative mx-auto max-w-3xl">
+                {/* Grid background */}
+                <TemplateGrid type={activeTemplate} />
+
+                {/* Text layer */}
+                <textarea
+                  ref={templateEditorRef}
+                  value={templateText}
+                  onChange={(e) => setTemplateText(e.target.value)}
+                  placeholder="Start writing..."
+                  className="absolute inset-0 w-full resize-none bg-transparent font-mono text-sm leading-[40px] text-[#1a1a1a] placeholder:text-[#999] focus:outline-none"
+                  style={{
+                    lineHeight: activeTemplate === 'sheet-music' ? '40px' : activeTemplate === 'guitar-chords' ? '60px' : '28px',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex items-center justify-between border-t border-[#222222] px-6 py-4">
+              <button
+                onClick={printTemplate}
+                className="flex items-center gap-2 rounded-full border border-[#222222] bg-[#111111] px-5 py-3 text-sm font-semibold text-[#888888] transition-all hover:text-white hover:border-[#333333]"
+              >
+                <Printer size={15} strokeWidth={1.75} />
+                Print / Download PDF
+              </button>
+              <button
+                onClick={saveTemplateAsNote}
+                disabled={templateSaving}
+                className="flex items-center gap-2 rounded-full bg-[#3B82F6] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#2563EB] hover:shadow-lg hover:shadow-[#3B82F6]/30 disabled:opacity-50"
+              >
+                {templateSaving ? 'Saving...' : 'Save as Note'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Placeholder style for contentEditable */}
       <style>{`
         [contenteditable][data-placeholder]:empty::before {
@@ -374,4 +542,91 @@ function ToolbarButton({
       {children}
     </button>
   );
+}
+
+function TemplateGrid({ type }: { type: TemplateType }) {
+  if (type === 'sheet-music') {
+    const staves = Array.from({ length: 10 });
+    return (
+      <div className="absolute inset-0 rounded-lg bg-white">
+        {staves.map((_, i) => (
+          <div
+            key={i}
+            className="flex flex-col"
+            style={{ height: '40px', borderBottom: '1px solid #ccc', marginTop: i === 0 ? '0' : '0' }}
+          >
+            {[0, 1, 2, 3, 4].map((j) => (
+              <div key={j} style={{ height: '8px', borderBottom: '1px solid #333' }} />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'guitar-chords') {
+    const rows = Array.from({ length: 10 });
+    return (
+      <div
+        className="absolute inset-0 rounded-lg bg-white"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, #bbb 1px, transparent 1px), linear-gradient(to bottom, #bbb 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }}
+      >
+        {rows.map((_, i) => (
+          <div
+            key={i}
+            style={{ height: '60px', borderBottom: '2px solid #555' }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'lyrics-chords') {
+    const rows = Array.from({ length: 24 });
+    return (
+      <div className="absolute inset-0 rounded-lg bg-white">
+        {rows.map((_, i) => (
+          <div
+            key={i}
+            style={{ height: '28px', borderBottom: '1px dashed #ddd' }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="absolute inset-0 rounded-lg bg-white"
+      style={{
+        backgroundImage:
+          'linear-gradient(to right, #ccc 1px, transparent 1px), linear-gradient(to bottom, #ccc 1px, transparent 1px)',
+        backgroundSize: '28px 28px',
+      }}
+    />
+  );
+}
+
+function getTemplatePrintGrid(type: TemplateType): string {
+  if (type === 'sheet-music') {
+    const lines = Array.from({ length: 5 }, (_, i) =>
+      `border-bottom: 1px solid #333; height: 8px;`
+    ).join('');
+    return `
+      .grid-bg {
+        background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 32px, #333 32px, #333 33px, #333 33px, #333 34px, #333 34px, #333 35px, #333 35px, #333 36px, #333 36px, #333 37px, #333 37px, #333 38px, #333 38px, #333 39px, #333 39px, #333 40px);
+      }
+    `;
+  }
+  if (type === 'guitar-chords') {
+    return `.grid-bg { background-image: linear-gradient(to right, #bbb 1px, transparent 1px), linear-gradient(to bottom, #bbb 1px, transparent 1px); background-size: 60px 60px; }`;
+  }
+  if (type === 'lyrics-chords') {
+    return `.grid-bg { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 27px, #ddd 27px, #ddd 28px); }`;
+  }
+  return `.grid-bg { background-image: linear-gradient(to right, #ccc 1px, transparent 1px), linear-gradient(to bottom, #ccc 1px, transparent 1px); background-size: 28px 28px; }`;
 }
