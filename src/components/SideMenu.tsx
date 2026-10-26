@@ -1,4 +1,7 @@
-import { X, Settings, LifeBuoy, LogOut } from 'lucide-react';
+import {
+  X, Settings, LifeBuoy, LogOut,
+  Info, Mic, ShoppingBag, Mail,
+} from 'lucide-react';
 
 interface SideMenuProps {
   open: boolean;
@@ -7,6 +10,10 @@ interface SideMenuProps {
   onSettings: () => void;
   onSupport: () => void;
   onSignOut: () => void;
+  onAbout: () => void;
+  onAudition: () => void;
+  onStore: () => void;
+  onContacts: () => void;
 }
 
 export default function SideMenu({
@@ -16,7 +23,31 @@ export default function SideMenu({
   onSettings,
   onSupport,
   onSignOut,
+  onAbout,
+  onAudition,
+  onStore,
+  onContacts,
 }: SideMenuProps) {
+  const menuItem = (
+    icon: typeof Info,
+    label: string,
+    onClick: () => void,
+  ) => (
+    <button
+      onClick={() => {
+        onClose();
+        onClick();
+      }}
+      className="flex items-center gap-4 rounded-2xl px-4 py-4 text-left transition-colors hover:bg-[#1a1a1a]"
+    >
+      {(() => {
+        const Icon = icon;
+        return <Icon size={20} className="text-[#888888]" strokeWidth={1.5} />;
+      })()}
+      <span className="text-sm font-medium text-white">{label}</span>
+    </button>
+  );
+
   return (
     <>
       {open && (
@@ -42,28 +73,13 @@ export default function SideMenu({
           </button>
         </div>
 
-        <nav className="mt-4 flex flex-col gap-1 px-3">
-          <button
-            onClick={() => {
-              onClose();
-              onSettings();
-            }}
-            className="flex items-center gap-4 rounded-2xl px-4 py-4 text-left transition-colors hover:bg-[#1a1a1a]"
-          >
-            <Settings size={20} className="text-[#888888]" strokeWidth={1.5} />
-            <span className="text-sm font-medium text-white">Settings</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onClose();
-              onSupport();
-            }}
-            className="flex items-center gap-4 rounded-2xl px-4 py-4 text-left transition-colors hover:bg-[#1a1a1a]"
-          >
-            <LifeBuoy size={20} className="text-[#888888]" strokeWidth={1.5} />
-            <span className="text-sm font-medium text-white">Support</span>
-          </button>
+        <nav className="mt-4 flex flex-col gap-1 overflow-y-auto px-3">
+          {menuItem(Settings, 'Settings', onSettings)}
+          {menuItem(LifeBuoy, 'Support', onSupport)}
+          {menuItem(Info, 'About Us', onAbout)}
+          {menuItem(Mic, 'Audition', onAudition)}
+          {menuItem(ShoppingBag, 'Store', onStore)}
+          {menuItem(Mail, 'Contacts', onContacts)}
         </nav>
 
         {signedIn && (

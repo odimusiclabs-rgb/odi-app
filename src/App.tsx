@@ -14,6 +14,8 @@ import MapPage from '@/components/MapPage';
 import ArtistsPage from '@/components/ArtistsPage';
 import SettingsPage from '@/components/SettingsPage';
 import SupportPage from '@/components/SupportPage';
+import ContactsPage from '@/components/ContactsPage';
+import ComingSoonPage from '@/components/ComingSoonPage';
 import SideMenu from '@/components/SideMenu';
 import RosterSection from '@/components/RosterSection';
 import EditProfilePage from '@/components/EditProfilePage';
@@ -31,6 +33,10 @@ type View =
   | 'artists'
   | 'settings'
   | 'support'
+  | 'contacts'
+  | 'about'
+  | 'audition'
+  | 'store'
   | 'edit-profile';
 
 function AppContent() {
@@ -137,6 +143,42 @@ function AppContent() {
     );
   }
 
+  if (view === 'contacts') {
+    return (
+      <>
+        <ContactsPage onBack={goHome} />
+        <BottomNav active="home" onNavigate={setNav} onProfileClick={handleProfileClick} />
+      </>
+    );
+  }
+
+  if (view === 'about') {
+    return (
+      <>
+        <ComingSoonPage title="About Us" onBack={goHome} />
+        <BottomNav active="home" onNavigate={setNav} onProfileClick={handleProfileClick} />
+      </>
+    );
+  }
+
+  if (view === 'audition') {
+    return (
+      <>
+        <ComingSoonPage title="Audition" onBack={goHome} />
+        <BottomNav active="home" onNavigate={setNav} onProfileClick={handleProfileClick} />
+      </>
+    );
+  }
+
+  if (view === 'store') {
+    return (
+      <>
+        <ComingSoonPage title="Store" onBack={goHome} />
+        <BottomNav active="home" onNavigate={setNav} onProfileClick={handleProfileClick} />
+      </>
+    );
+  }
+
   if (view === 'cloud') {
     return (
       <>
@@ -162,14 +204,21 @@ function AppContent() {
   }
 
   if (view === 'map') {
-    return <MapPage onBack={goHome} focusEventId={focusEventId} />;
+    return (
+      <MapPage
+        onBack={goHome}
+        focusEventId={focusEventId}
+        onNavigate={setNav}
+        onProfileClick={handleProfileClick}
+      />
+    );
   }
 
   if (view === 'artists') {
     return (
       <>
         <ArtistsPage onBack={goHome} />
-        <BottomNav active="home" onNavigate={setNav} onProfileClick={handleProfileClick} />
+        <BottomNav active="artists" onNavigate={setNav} onProfileClick={handleProfileClick} />
       </>
     );
   }
@@ -204,6 +253,10 @@ function AppContent() {
         signedIn={!!user}
         onSettings={() => setView('settings')}
         onSupport={() => setView('support')}
+        onAbout={() => setView('about')}
+        onAudition={() => setView('audition')}
+        onStore={() => setView('store')}
+        onContacts={() => setView('contacts')}
         onSignOut={async () => {
           await signOut();
           setView('home');

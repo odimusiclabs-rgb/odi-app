@@ -10,7 +10,7 @@ const CARD_SIZE = 180;
 
 export default function Carousel({ onLockedAction }: CarouselProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const [activeId, setActiveId] = useState<number>(releases[0].id);
+  const [activeId, setActiveId] = useState<number>(releases.slice(0, 3)[0]?.id ?? releases[0].id);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -66,7 +66,7 @@ export default function Carousel({ onLockedAction }: CarouselProps) {
       >
         <div className="shrink-0" style={{ width: 'max(20px, calc(50vw - 114px))' }} />
 
-        {releases.map((release) => {
+        {releases.slice(0, 3).map((release) => {
           const isActive = release.id === activeId;
           return (
             <div

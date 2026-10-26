@@ -1,5 +1,4 @@
-import { ArrowLeft, Play } from 'lucide-react';
-import { artists } from '@/data/artists';
+import { ArrowLeft, Globe2, Star, Play } from 'lucide-react';
 
 interface ArtistsPageProps {
   onBack: () => void;
@@ -22,30 +21,34 @@ export default function ArtistsPage({ onBack }: ArtistsPageProps) {
         </h1>
         <p className="mt-3 text-sm text-[#888888]">Discover the sound of ODI LABS.</p>
 
-        <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {artists.map((artist, index) => (
-            <div
-              key={artist.id}
-              className="group animate-fade-up"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div className="relative aspect-[3/4] overflow-hidden rounded-[24px] border border-[#222222]">
-                <img
-                  src={artist.cover}
-                  alt={artist.name}
-                  className="h-full w-full object-cover grayscale transition-all duration-700 group-hover:scale-105 group-hover:grayscale-0"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h2 className="font-anton text-3xl uppercase text-white">{artist.name}</h2>
-                  <button className="mt-4 flex items-center gap-2 rounded-full bg-[#3B82F6] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#2563EB]">
-                    <Play size={14} fill="white" strokeWidth={0} />
-                    Listen
-                  </button>
-                </div>
-              </div>
+        {/* Global Artists */}
+        <div className="mt-12">
+          <div className="mb-5 flex items-center gap-3">
+            <Globe2 size={22} className="text-[#3B82F6]" strokeWidth={1.75} />
+            <h2 className="font-anton text-2xl uppercase text-white">Global Artists</h2>
+          </div>
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-[#1a1a1a] bg-[#111111] px-6 py-20 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#222222] bg-[#141414]">
+              <Globe2 size={28} className="text-[#555555]" strokeWidth={1.5} />
             </div>
-          ))}
+            <p className="mt-5 font-anton text-lg uppercase text-white">Coming Soon</p>
+            <p className="mt-2 text-sm text-[#888888]">Global artist roster is being curated.</p>
+          </div>
+        </div>
+
+        {/* ODI A */}
+        <div className="mt-10">
+          <div className="mb-5 flex items-center gap-3">
+            <Star size={22} className="text-[#3B82F6]" strokeWidth={1.75} />
+            <h2 className="font-anton text-2xl uppercase text-white">ODI A</h2>
+          </div>
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-[#1a1a1a] bg-[#111111] px-6 py-20 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#222222] bg-[#141414]">
+              <Star size={28} className="text-[#555555]" strokeWidth={1.5} />
+            </div>
+            <p className="mt-5 font-anton text-lg uppercase text-white">Coming Soon</p>
+            <p className="mt-2 text-sm text-[#888888]">ODI A artists will be revealed soon.</p>
+          </div>
         </div>
       </div>
     </div>

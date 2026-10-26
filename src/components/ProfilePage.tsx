@@ -12,9 +12,13 @@ import {
   AlertCircle,
   ChevronRight,
   X,
+  MapPin,
+  Calendar,
+  Bookmark,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { mapEvents, type MapEvent } from '@/data/mapEvents';
 
 export type RequestStatus = 'pending' | 'approved' | 'resolved' | 'rejected';
 export type RequestType = 'event' | 'support' | 'artist' | 'profile_edit';
@@ -27,6 +31,12 @@ export interface UserRequest {
   status: RequestStatus;
   target_view: string | null;
   created_at: string;
+}
+
+interface SavedEvent {
+  event_id: number;
+  saved: boolean;
+  visited: boolean;
 }
 
 interface ProfilePageProps {
@@ -77,6 +87,18 @@ const typeConfig: Record<RequestType, { label: string; icon: typeof AlertCircle 
   profile_edit: { label: 'Profile Edit', icon: AlertCircle },
 };
 
+const roleConfig: Record<string, { color: string; bg: string; border: string }> = {
+  member: { color: '#888888', bg: 'rgba(136,136,136,0.1)', border: 'rgba(136,136,136,0.3)' },
+  artist: { color: '#3B82F6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)' },
+  producer: { color: '#A855F7', bg: 'rgba(168,85,247,0.1)', border: 'rgba(168,85,247,0.3)' },
+  staff: { color: '#F97316', bg: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.3)' },
+  composer: { color: '#22C55E', bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.3)' },
+  admin: { color: '#EF4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)' },
+  'first star': { color: '#FBBF24', bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)' },
+};
+
+const roleOrder = ['admin', 'first star', 'artist', 'producer', 'composer', 'staff', 'member'];
+
 export default function ProfilePage({
   onBack,
   onAdminPanel,
@@ -88,19 +110,19 @@ export default function ProfilePage({
   const [loadingRequests, setLoadingRequests] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [savedEvents, setSavedEvents] = useState<MapEvent[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(true);
 
   const fetchRequests = useCallback(async () => {
     if (!user) return;
     setLoadingRequests(true);
-
     const { data, error } = await supabase
       .from('user_requests')
       .select('id, type, title, description, status, target_view, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-
     if (error) {
-      console.error('Failed to load requests:', error.message);
       setRequests([]);
     } else {
       setRequests((data ?? []) as UserRequest[]);
@@ -108,19 +130,37 @@ export default function ProfilePage({
     setLoadingRequests(false);
   }, [user]);
 
+  const fetchSavedEvents = useCallback(async () => {
+    if (!user) return;
+    setLoadingSaved(true);
+    const { data } = await supabase
+      .from('event_user_status')
+      .select('event_id, saved, visited')
+      .eq('user_id', user.id)
+      .eq('saved', true);
+    if (data) {
+      const savedIds = (data as SavedEvent[]).map((d) => d.event_id);
+      const events = mapEvents.filter((e) => savedIds.includes(e.id));
+      setSavedEvents(events);
+    }
+    setLoadingSaved(false);
+  }, [user]);
+
   useEffect(() => {
     fetchRequests();
-  }, [fetchRequests]);
+    fetchSavedEvents();
+  }, [fetchRequests, fetchSavedEvents]);
 
   useEffect(() => {
     if (profile?.id) {
       supabase
         .from('profiles')
-        .select('avatar_url')
+        .select('avatar_url, cover_url')
         .eq('id', profile.id)
         .maybeSingle()
         .then(({ data }) => {
           if (data?.avatar_url) setAvatarUrl(data.avatar_url);
+          if (data?.cover_url) setCoverUrl(data.cover_url);
         });
     }
   }, [profile?.id]);
@@ -151,18 +191,27 @@ export default function ProfilePage({
   const username = profile?.email?.split('@')[0] ?? 'user';
   const initial = profile?.name?.charAt(0)?.toUpperCase() ?? '?';
 
+  const userRoles = profile?.roles ?? ['member'];
+  const sortedRoles = [...userRoles].sort(
+    (a, b) => roleOrder.indexOf(a) - roleOrder.indexOf(b)
+  );
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] pb-32">
-      {/* Header banner */}
+      {/* Header banner / cover */}
       <div className="relative h-56 w-full overflow-hidden sm:h-64">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "linear-gradient(180deg, rgba(10,10,10,0.3) 0%, rgba(10,10,10,0.85) 80%, #0A0A0A 100%), url('https://images.pexels.com/photos/8716401/pexels-photo-8716401.jpeg?auto=compress&cs=tinysrgb&h=600&w=1200')",
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/40 to-transparent" />
+        {coverUrl ? (
+          <img src={coverUrl} alt="Cover" className="h-full w-full object-cover" />
+        ) : (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage:
+                "linear-gradient(180deg, rgba(10,10,10,0.3) 0%, rgba(10,10,10,0.85) 80%, #0A0A0A 100%), url('https://images.pexels.com/photos/8716401/pexels-photo-8716401.jpeg?auto=compress&cs=tinysrgb&h=600&w=1200')",
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent" />
 
         <div className="relative z-10 flex items-center justify-between px-6 pt-8 sm:px-10">
           <button
@@ -202,6 +251,22 @@ export default function ProfilePage({
             </h1>
 
             <p className="mt-1 text-sm font-medium text-[#3B82F6]">@{username}</p>
+
+            {/* Role badges */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {sortedRoles.map((role) => {
+                const cfg = roleConfig[role] ?? roleConfig.member;
+                return (
+                  <span
+                    key={role}
+                    className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ color: cfg.color, backgroundColor: cfg.bg, border: `1px solid ${cfg.border}` }}
+                  >
+                    {role}
+                  </span>
+                );
+              })}
+            </div>
 
             {/* Stats row */}
             <div className="mt-6 flex items-center divide-x divide-[#222222]">
@@ -258,10 +323,10 @@ export default function ProfilePage({
             <div className="mt-6 space-y-3">
               {requests.map((req) => {
                 const status = statusConfig[req.status];
-    const type = typeConfig[req.type];
-    const StatusIcon = status.icon;
-    const TypeIcon = type.icon;
-    const isLive = req.status === 'approved' || req.status === 'resolved';
+                const type = typeConfig[req.type];
+                const StatusIcon = status.icon;
+                const TypeIcon = type.icon;
+                const isLive = req.status === 'approved' || req.status === 'resolved';
 
                 return (
                   <button
@@ -310,6 +375,57 @@ export default function ProfilePage({
                   </button>
                 );
               })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Saved Events section */}
+      <div className="mt-12 px-6 sm:px-10">
+        <div className="mx-auto max-w-2xl">
+          <div className="flex items-center justify-between">
+            <h2 className="font-anton text-2xl uppercase text-white">Saved Events</h2>
+            {savedEvents.length > 0 && (
+              <span className="text-xs text-[#555555]">{savedEvents.length} saved</span>
+            )}
+          </div>
+
+          {loadingSaved ? (
+            <div className="mt-8 flex justify-center">
+              <Loader2 size={24} className="animate-spin text-[#888888]" />
+            </div>
+          ) : savedEvents.length === 0 ? (
+            <div className="mt-8 flex flex-col items-center justify-center rounded-3xl border border-[#1a1a1a] bg-[#111111] px-6 py-16 text-center">
+              <Bookmark size={32} className="text-[#333333]" strokeWidth={1.5} />
+              <p className="mt-4 text-sm text-[#888888]">No saved events yet.</p>
+              <p className="mt-1 text-xs text-[#555555]">
+                Bookmark events from the Map to see them here.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-3">
+              {savedEvents.map((event) => (
+                <button
+                  key={event.id}
+                  onClick={() => onNavigate('map')}
+                  className="group flex w-full items-center gap-4 rounded-2xl border border-[#222222] bg-[#1A1A1A] px-5 py-4 text-left transition-all hover:border-[#333333] hover:bg-[#222222]"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#3B82F6]/10 border border-[#3B82F6]/30">
+                    <MapPin size={18} className="text-[#3B82F6]" strokeWidth={1.5} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">{event.title}</p>
+                    <div className="mt-1 flex items-center gap-3 text-xs text-[#888888]">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={11} strokeWidth={1.5} className="text-[#555555]" />
+                        {event.date}
+                      </span>
+                      <span>{event.city}, {event.country}</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="shrink-0 text-[#333333] transition-colors group-hover:text-[#555555]" strokeWidth={1.5} />
+                </button>
+              ))}
             </div>
           )}
         </div>

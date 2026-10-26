@@ -1,4 +1,6 @@
-export type EventType = 'kpop' | 'studio' | 'festival' | 'workshop';
+import { Mic, Headphones, Camera, Users, Star, BookOpen, type LucideIcon } from 'lucide-react';
+
+export type EventType = 'perform' | 'studio' | 'shoot' | 'collab' | 'event' | 'learn';
 
 export interface MapEvent {
   id: number;
@@ -13,18 +15,27 @@ export interface MapEvent {
   description: string;
 }
 
+export const typeConfig: Record<EventType, { label: string; icon: LucideIcon }> = {
+  perform: { label: 'Perform', icon: Mic },
+  studio: { label: 'Studio', icon: Headphones },
+  shoot: { label: 'Shoot', icon: Camera },
+  collab: { label: 'Collab', icon: Users },
+  event: { label: 'Event', icon: Star },
+  learn: { label: 'Learn', icon: BookOpen },
+};
+
 export const mapEvents: MapEvent[] = [
   {
     id: 1,
     title: 'ODI Showcase Night',
-    type: 'kpop',
+    type: 'perform',
     city: 'Seoul',
     country: 'Korea',
     date: 'Nov 15, 2026',
     lat: 37.5665,
     lng: 126.978,
     major: true,
-    description: 'Exclusive K-pop showcase featuring ODI LABS artists and special guests.',
+    description: 'Exclusive performance showcase featuring ODI LABS artists and special guests.',
   },
   {
     id: 2,
@@ -41,19 +52,19 @@ export const mapEvents: MapEvent[] = [
   {
     id: 3,
     title: 'Underground Beats',
-    type: 'festival',
+    type: 'event',
     city: 'Tokyo',
     country: 'Japan',
     date: 'Dec 1, 2026',
     lat: 35.6762,
     lng: 139.6503,
     major: true,
-    description: 'A full-day festival spotlighting emerging electronic and hip-hop talent.',
+    description: 'A full-day event spotlighting emerging electronic and hip-hop talent.',
   },
   {
     id: 4,
     title: 'Vocal Workshop',
-    type: 'workshop',
+    type: 'learn',
     city: 'Busan',
     country: 'Korea',
     date: 'Dec 8, 2026',
@@ -65,7 +76,7 @@ export const mapEvents: MapEvent[] = [
   {
     id: 5,
     title: 'Producer Meetup',
-    type: 'studio',
+    type: 'collab',
     city: 'Saint Petersburg',
     country: 'Russia',
     date: 'Dec 14, 2026',
@@ -77,19 +88,19 @@ export const mapEvents: MapEvent[] = [
   {
     id: 6,
     title: 'ODI Arena Live',
-    type: 'kpop',
+    type: 'perform',
     city: 'Los Angeles',
     country: 'USA',
     date: 'Jan 10, 2027',
     lat: 34.0522,
     lng: -118.2437,
     major: true,
-    description: 'Large-scale K-pop concert at a premier LA venue.',
+    description: 'Large-scale live performance at a premier LA venue.',
   },
   {
     id: 7,
     title: 'Mixing Masterclass',
-    type: 'workshop',
+    type: 'learn',
     city: 'Berlin',
     country: 'Germany',
     date: 'Jan 18, 2027',
@@ -100,22 +111,19 @@ export const mapEvents: MapEvent[] = [
   },
   {
     id: 8,
-    title: 'Night Market Festival',
-    type: 'festival',
+    title: 'Music Video Shoot',
+    type: 'shoot',
     city: 'Bangkok',
     country: 'Thailand',
     date: 'Jan 25, 2027',
     lat: 13.7563,
     lng: 100.5018,
     major: false,
-    description: 'Outdoor festival blending music, food, and street culture.',
+    description: 'Professional music video shoot with full production crew.',
   },
 ];
 
 export const allCountries = Array.from(new Set(mapEvents.map((e) => e.country))).sort();
-export const allTypes: { value: EventType; label: string }[] = [
-  { value: 'kpop', label: 'K-pop' },
-  { value: 'studio', label: 'Studio' },
-  { value: 'festival', label: 'Festival' },
-  { value: 'workshop', label: 'Workshop' },
-];
+export const allTypes: { value: EventType; label: string; icon: LucideIcon }[] = (
+  Object.entries(typeConfig) as [EventType, { label: string; icon: LucideIcon }][]
+).map(([value, cfg]) => ({ value, label: cfg.label, icon: cfg.icon }));

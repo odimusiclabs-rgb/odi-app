@@ -1,35 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, SlidersHorizontal, X, MapPin, Calendar, Map as MapIcon, Check, Bookmark, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, SlidersHorizontal, X, Calendar, Map as MapIcon, Check, Bookmark, CheckCircle2, Palette } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { mapEvents, allCountries, allTypes, type MapEvent, type EventType } from '@/data/mapEvents';
+import { mapEvents, allCountries, allTypes, typeConfig, type MapEvent, type EventType } from '@/data/mapEvents';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 
 interface MapPageProps {
   onBack: () => void;
   focusEventId?: number;
+  onNavigate?: (id: 'home' | 'cloud' | 'notes' | 'map' | 'artists') => void;
+  onProfileClick?: () => void;
 }
 
-const typeLabels: Record<EventType, string> = {
-  kpop: 'K-pop',
-  studio: 'Studio',
-  festival: 'Festival',
-  workshop: 'Workshop',
+// Pin style per category: background, border color, icon stroke color
+const pinStyles: Record<EventType, { bg: string; border: string; iconColor: string; iconSvg: string }> = {
+  perform: { bg: '#0A0A0A', border: '#3B82F6', iconColor: '#3B82F6', iconSvg: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>' },
+  studio: { bg: '#3B82F6', border: '#3B82F6', iconColor: '#FFFFFF', iconSvg: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5a9 9 0 0 1 18 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/>' },
+  shoot: { bg: 'transparent', border: '#FFFFFF', iconColor: '#FFFFFF', iconSvg: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>' },
+  collab: { bg: '#3B82F6', border: '#FFFFFF', iconColor: '#FFFFFF', iconSvg: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+  event: { bg: '#0A0A0A', border: '#3B82F6', iconColor: '#3B82F6', iconSvg: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>' },
+  learn: { bg: '#0A0A0A', border: '#3B82F6', iconColor: '#3B82F6', iconSvg: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>' },
 };
 
-function createPinIcon(major: boolean): L.DivIcon {
-  const size = major ? 22 : 16;
-  const ringColor = major ? '#3B82F6' : '#666666';
-  const bgColor = major ? '#0A0A0A' : '#333333';
+function createPinIcon(type: EventType, major: boolean): L.DivIcon {
+  const size = major ? 30 : 24;
+  const style = pinStyles[type];
+  const glow = major ? '16px' : '8px';
+  const glowColor = major ? 'rgba(59,130,246,0.5)' : 'rgba(0,0,0,0.4)';
   return L.divIcon({
     className: 'odi-map-pin',
     html: `<div style="
       width:${size}px;height:${size}px;border-radius:50%;
-      background:${bgColor};border:2px solid ${ringColor};
-      box-shadow:0 0 ${major ? '16px' : '8px'} ${major ? 'rgba(59,130,246,0.5)' : 'rgba(0,0,0,0.4)'};
+      background:${style.bg};border:2px solid ${style.border};
+      box-shadow:0 0 ${glow} ${glowColor};
+      display:flex;align-items:center;justify-content:center;
       transition:transform 0.2s;
-    "></div>`,
+    "><svg width="${Math.floor(size * 0.5)}" height="${Math.floor(size * 0.5)}" viewBox="0 0 24 24" fill="none" stroke="${style.iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${style.iconSvg}</svg></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -40,7 +47,9 @@ interface EventStatus {
   visited: boolean;
 }
 
-export default function MapPage({ onBack, focusEventId }: MapPageProps) {
+const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
+export default function MapPage({ onBack, focusEventId, onNavigate, onProfileClick }: MapPageProps) {
   const { user } = useAuth();
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -108,9 +117,10 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
       worldCopyJump: true,
     });
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
     }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -138,7 +148,7 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
     markersRef.current = [];
 
     filteredEvents.forEach((event) => {
-      const marker = L.marker([event.lat, event.lng], { icon: createPinIcon(event.major) });
+      const marker = L.marker([event.lat, event.lng], { icon: createPinIcon(event.type, event.major) });
       marker.bindTooltip(event.title, {
         permanent: false,
         direction: 'top',
@@ -147,13 +157,17 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
       });
       marker.on('click', () => {
         setSelectedEvent(event);
-        map.flyTo([event.lat, event.lng], 14, { duration: 1.5 });
-
-        const onMoveEnd = () => {
-          map.panBy([0, 170], { animate: true, duration: 0.5 });
-          map.off('moveend', onMoveEnd);
-        };
-        map.on('moveend', onMoveEnd);
+        if (isMobile) {
+          map.setView([event.lat, event.lng], 14, { animate: false });
+          map.panBy([0, 170], { animate: false });
+        } else {
+          map.flyTo([event.lat, event.lng], 14, { duration: 1.5 });
+          const onMoveEnd = () => {
+            map.panBy([0, 170], { animate: true, duration: 0.5 });
+            map.off('moveend', onMoveEnd);
+          };
+          map.on('moveend', onMoveEnd);
+        }
       });
       marker.addTo(map);
       markersRef.current.push(marker);
@@ -168,12 +182,17 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
     if (!event) return;
     const map = mapRef.current;
     setSelectedEvent(event);
-    map.flyTo([event.lat, event.lng], 14, { duration: 1.5 });
-    const onMoveEnd = () => {
-      map.panBy([0, 170], { animate: true, duration: 0.5 });
-      map.off('moveend', onMoveEnd);
-    };
-    map.on('moveend', onMoveEnd);
+    if (isMobile) {
+      map.setView([event.lat, event.lng], 14, { animate: false });
+      map.panBy([0, 170], { animate: false });
+    } else {
+      map.flyTo([event.lat, event.lng], 14, { duration: 1.5 });
+      const onMoveEnd = () => {
+        map.panBy([0, 170], { animate: true, duration: 0.5 });
+        map.off('moveend', onMoveEnd);
+      };
+      map.on('moveend', onMoveEnd);
+    }
   }, [focusEventId]);
 
   const togglePendingCountry = (country: string) => {
@@ -248,7 +267,7 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
       <style>{`
         .leaflet-container { background: #0A0A0A !important; }
         .leaflet-tile-pane {
-          filter: invert(1) hue-rotate(180deg) brightness(0.7) contrast(1.2);
+          filter: brightness(0.8) contrast(0.9);
         }
         .leaflet-control-zoom a {
           background: #1A1A1A !important;
@@ -333,6 +352,7 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
               <div className="flex flex-wrap gap-2">
                 {allTypes.map((type) => {
                   const active = pendingTypes.has(type.value);
+                  const Icon = type.icon;
                   return (
                     <button
                       key={type.value}
@@ -343,7 +363,7 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
                           : 'border border-[#222222] bg-[#111111] text-[#888888]'
                       }`}
                     >
-                      {active && <Check size={13} strokeWidth={2.5} className="text-[#3B82F6]" />}
+                      <Icon size={14} strokeWidth={2} className={active ? 'text-[#3B82F6]' : ''} />
                       {type.label}
                     </button>
                   );
@@ -384,7 +404,7 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
                 className={`flex h-2 w-2 rounded-full ${selectedEvent.major ? 'bg-[#3B82F6]' : 'bg-[#666666]'}`}
               />
               <span className="text-xs font-semibold uppercase tracking-wider text-[#3B82F6]">
-                {typeLabels[selectedEvent.type]}
+                {typeConfig[selectedEvent.type].label}
               </span>
             </div>
 
@@ -447,35 +467,61 @@ export default function MapPage({ onBack, focusEventId }: MapPageProps) {
       )}
 
       {/* Bottom navigation */}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1000] pb-6">
-        <div className="flex justify-center">
-          <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-black/5 bg-white p-2 shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-float">
-            <button className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[#0A0A0A] hover:bg-gray-100" aria-label="Home">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Home</span>
-            </button>
-            <button className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[#0A0A0A] hover:bg-gray-100" aria-label="Cloud">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 15.3"/></svg>
-              <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Cloud</span>
-            </button>
-            <button className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[#0A0A0A] hover:bg-gray-100" aria-label="Notes">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-              <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Notes</span>
-            </button>
-            <button className="flex items-center gap-2 rounded-full bg-[#0A0A0A] px-4 py-2.5 text-white" aria-label="Map">
-              <MapPin size={20} strokeWidth={1.75} />
-              <span className="max-w-[80px] overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Map</span>
+      {onNavigate && onProfileClick && (
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1000] pb-6">
+          <div className="flex justify-center">
+            <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-black/5 bg-white p-2 shadow-[0_8px_32px_rgba(0,0,0,0.4)] animate-float">
+              <button
+                onClick={() => onNavigate('home')}
+                className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[#0A0A0A] hover:bg-gray-100"
+                aria-label="Home"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Home</span>
+              </button>
+              <button
+                onClick={() => onNavigate('cloud')}
+                className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[#0A0A0A] hover:bg-gray-100"
+                aria-label="Cloud"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 15.3"/></svg>
+                <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Cloud</span>
+              </button>
+              <button
+                onClick={() => onNavigate('notes')}
+                className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[#0A0A0A] hover:bg-gray-100"
+                aria-label="Notes"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Notes</span>
+              </button>
+              <button
+                className="flex items-center gap-2 rounded-full bg-[#0A0A0A] px-4 py-2.5 text-white"
+                aria-label="Map"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span className="max-w-[80px] overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Map</span>
+              </button>
+              <button
+                onClick={() => onNavigate('artists')}
+                className="flex items-center gap-2 rounded-full px-4 py-2.5 text-[#0A0A0A] hover:bg-gray-100"
+                aria-label="Artists"
+              >
+                <Palette size={20} strokeWidth={1.75} />
+                <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium transition-all duration-300">Artists</span>
+              </button>
+            </div>
+            <button
+              onClick={onProfileClick}
+              className="pointer-events-auto ml-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#0A0A0A] shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all hover:scale-105 animate-float"
+              style={{ animationDelay: '0.5s' }}
+              aria-label="Profile"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </button>
           </div>
-          <button
-            className="pointer-events-auto ml-3 flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#0A0A0A] shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all hover:scale-105 animate-float"
-            style={{ animationDelay: '0.5s' }}
-            aria-label="Profile"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

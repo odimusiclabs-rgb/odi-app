@@ -1,6 +1,6 @@
-import { Home, Cloud, Music2, Map, User } from 'lucide-react';
+import { Home, Cloud, Music2, Map, User, Palette } from 'lucide-react';
 
-export type NavId = 'home' | 'cloud' | 'notes' | 'map';
+export type NavId = 'home' | 'cloud' | 'notes' | 'map' | 'artists';
 
 interface BottomNavProps {
   active: NavId;
@@ -14,6 +14,7 @@ const navItems: { id: NavId; label: string; icon: typeof Home }[] = [
   { id: 'cloud', label: 'Cloud', icon: Cloud },
   { id: 'notes', label: 'Notes', icon: Music2 },
   { id: 'map', label: 'Map', icon: Map },
+  { id: 'artists', label: 'Artists', icon: Palette },
 ];
 
 export default function BottomNav({
@@ -32,7 +33,7 @@ export default function BottomNav({
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`group flex items-center gap-2 rounded-full px-4 py-2.5 transition-all ${
+              className={`group flex items-center gap-2 rounded-full px-3 py-2.5 transition-all sm:px-4 ${
                 isActive
                   ? 'bg-[#0A0A0A] text-white'
                   : 'text-[#0A0A0A] hover:bg-gray-100'
